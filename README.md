@@ -1,14 +1,14 @@
 # API REST de Gestión de Productos
 
-API REST desarrollada con **Node.js**, **Express** y **Firebase Firestore**, que permite gestionar productos mediante operaciones CRUD (crear, consultar, actualizar y eliminar).
+API REST desarrollada con **Node.js, Express y Firebase Cloud Firestore**, que permite gestionar productos mediante operaciones CRUD (crear, consultar, actualizar y eliminar).
 
-Incluye autenticación mediante **JSON Web Tokens (JWT)**, control de acceso basado en roles, validación de datos y conexión a Firebase mediante el SDK modular de Firebase.
+Incluye autenticación mediante JSON Web Tokens (JWT), control de acceso basado en roles, validación de datos y conexión a Firebase mediante el **Firebase JavaScript SDK (API modular)**.
 
 ## Tecnologías utilizadas
 
 - Node.js
 - Express
-- Firebase SDK modular
+- Firebase JavaScript SDK (API modular)
 - Firebase Firestore Lite
 - Firebase Authentication
 - JSON Web Tokens (JWT)
@@ -85,7 +85,7 @@ proyecto-final-backend-v2/
 ### 1. Clonar el repositorio
 
 ```bash
-git clone URL_DEL_REPOSITORIO
+git clone https://github.com/rooz-well/proyecto-final-backend-v2.git
 ```
 
 Ingresar a la carpeta del proyecto:
@@ -109,7 +109,7 @@ Completar las variables con los valores correspondientes:
 ```env
 PORT=3000
 
-JWT_SECRET=tu_secreto_jwt
+JWT_SECRET=tu_secreto_jwt_seguro
 
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=tu_password_admin
@@ -117,26 +117,26 @@ ADMIN_PASSWORD=tu_password_admin
 USER_EMAIL=user@example.com
 USER_PASSWORD=tu_password_usuario
 
+FIREBASE_SERVER_EMAIL=
+FIREBASE_SERVER_PASSWORD=
+
 FIREBASE_API_KEY=
 FIREBASE_AUTH_DOMAIN=
 FIREBASE_PROJECT_ID=
 FIREBASE_STORAGE_BUCKET=
 FIREBASE_MESSAGING_SENDER_ID=
 FIREBASE_APP_ID=
-
-FIREBASE_SERVER_EMAIL=
-FIREBASE_SERVER_PASSWORD=
 ```
 
 Los valores anteriores son ejemplos. Se deben utilizar credenciales propias y un secreto JWT seguro.
 
-**Importante:** el archivo `.env` contiene información sensible y no debe subirse al repositorio.
+**Importante:** el archivo `.env` contiene información sensible y no debe subirse al repositorio. Se encuentra excluido del control de versiones mediante `.gitignore`.
 
 ### 4. Configurar Firebase
 
 Para conectar la aplicación con Firebase:
 
-1. Crear o utilizar un proyecto en Firebase.
+1. Crear o utilizar un proyecto en [Firebase Console](https://console.firebase.google.com/).
 2. Registrar una aplicación web en la configuración del proyecto.
 3. Copiar la configuración de Firebase Web y completar las variables correspondientes del archivo `.env`.
 4. Habilitar Cloud Firestore.
@@ -144,15 +144,45 @@ Para conectar la aplicación con Firebase:
 6. Crear un usuario técnico exclusivo para la conexión del servidor.
 7. Configurar las reglas de seguridad de Firestore para permitir el acceso únicamente al usuario técnico autorizado.
 
-La conexión se realiza mediante el **Firebase SDK modular**, utilizando Firebase Authentication y Firestore Lite.
+#### Reglas de seguridad de Firestore
+
+La base de datos utiliza reglas que restringen las operaciones de lectura y escritura al usuario técnico autenticado.
+
+Ejemplo:
+
+```javascript
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == 'UID_DEL_USUARIO_TECNICO';
+    }
+  }
+}
+```
+
+Se debe reemplazar `UID_DEL_USUARIO_TECNICO` por el UID correspondiente al usuario técnico creado en Firebase Authentication.
+
+#### Conexión y autenticación
+
+La conexión a Firebase se realiza mediante el **Firebase JavaScript SDK con su API modular**, utilizando Firebase Authentication y Firestore Lite.
 
 Firestore Lite permite realizar las operaciones necesarias para la gestión de productos, como consultas, creación, actualización y eliminación de documentos.
 
-La autenticación de los usuarios de la API se gestiona mediante JWT, mientras que la cuenta técnica permite al servidor acceder a Firestore.
+La aplicación utiliza dos mecanismos de autenticación con funciones diferentes:
+
+- **Firebase Authentication:** autentica la cuenta técnica que utiliza el servidor para acceder a Firestore.
+- **JWT:** gestiona la autenticación de los usuarios de la API y determina sus permisos según el rol asignado.
+
+Las credenciales `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `USER_EMAIL` y `USER_PASSWORD` corresponden a los usuarios gestionados por la aplicación para el inicio de sesión mediante JWT. No necesitan ser los mismos usuarios creados en Firebase Authentication.
+
+La cuenta técnica de Firebase utiliza las variables `FIREBASE_SERVER_EMAIL` y `FIREBASE_SERVER_PASSWORD`.
 
 **Importante:** no se utiliza Firebase Admin SDK ni se requiere una clave privada de cuenta de servicio.
 
-Las credenciales de Firebase y los datos de acceso deben mantenerse protegidos mediante variables de entorno.
+Las credenciales y los datos de acceso deben mantenerse protegidos mediante variables de entorno.
 
 ### 5. Iniciar el servidor
 
@@ -232,7 +262,7 @@ Los tokens tienen una duración de una hora.
 
 ## Base de datos
 
-La aplicación utiliza **Cloud Firestore** como base de datos remota.
+La aplicación utiliza Cloud Firestore como base de datos remota.
 
 Los productos se almacenan en la colección:
 
