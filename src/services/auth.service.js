@@ -4,17 +4,27 @@ import jwt from "jsonwebtoken";
 const login = ({ email, password }) => {
   let role;
 
-  // Verificar si es administrador
+  // Obtener credenciales configuradas
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const userEmail = process.env.USER_EMAIL;
+  const userPassword = process.env.USER_PASSWORD;
+
+  // Verificar que las credenciales del administrador estén configuradas
   if (
-    email === process.env.ADMIN_EMAIL &&
-    password === process.env.ADMIN_PASSWORD
+    adminEmail &&
+    adminPassword &&
+    email === adminEmail &&
+    password === adminPassword
   ) {
     role = "admin";
   }
-  // Verificar si es usuario
+  // Verificar que las credenciales del usuario estén configuradas
   else if (
-    email === process.env.USER_EMAIL &&
-    password === process.env.USER_PASSWORD
+    userEmail &&
+    userPassword &&
+    email === userEmail &&
+    password === userPassword
   ) {
     role = "user";
   }
