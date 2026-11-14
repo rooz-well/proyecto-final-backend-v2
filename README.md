@@ -2,15 +2,17 @@
 
 API REST desarrollada con **Node.js, Express y Firebase Cloud Firestore**, que permite gestionar productos mediante operaciones CRUD (crear, consultar, actualizar y eliminar).
 
-Incluye autenticación mediante JSON Web Tokens (JWT), control de acceso basado en roles, validación de datos y conexión a Firebase mediante el **Firebase JavaScript SDK (API modular)**.
+El proyecto incorpora autenticación mediante JSON Web Tokens (JWT), autorización basada en roles, validación de datos y conexión a Firebase mediante el Firebase JavaScript SDK (API modular).
+
+Se utilizan dos mecanismos de autenticación independientes: Firebase Authentication para autenticar la cuenta técnica que permite al servidor acceder a Firestore, y JWT para gestionar la autenticación y los permisos de los usuarios de la API.
 
 ## Tecnologías utilizadas
 
 - Node.js
 - Express
 - Firebase JavaScript SDK (API modular)
-- Firebase Firestore Lite
 - Firebase Authentication
+- Firebase Firestore Lite
 - JSON Web Tokens (JWT)
 - CORS
 - dotenv
@@ -33,11 +35,14 @@ Incluye autenticación mediante JSON Web Tokens (JWT), control de acceso basado 
 - Generación de tokens JWT.
 - Autenticación mediante Bearer Token.
 - Control de acceso según el rol del usuario.
-- Rutas protegidas mediante middleware.
+- Protección de rutas mediante middleware.
+- Autenticación de una cuenta técnica de Firebase para acceder a Firestore.
 
 ### Validaciones y manejo de errores
 
 - Validación de los datos recibidos.
+- Validación de las credenciales de inicio de sesión.
+- Verificación de la configuración de las cuentas antes de comparar credenciales.
 - Respuestas HTTP adecuadas para cada operación.
 - Manejo centralizado de errores.
 - Control de rutas inexistentes.
@@ -141,12 +146,12 @@ Para conectar la aplicación con Firebase:
 3. Copiar la configuración de Firebase Web y completar las variables correspondientes del archivo `.env`.
 4. Habilitar Cloud Firestore.
 5. Habilitar el proveedor de autenticación por correo electrónico y contraseña en Firebase Authentication.
-6. Crear un usuario técnico exclusivo para la conexión del servidor.
-7. Configurar las reglas de seguridad de Firestore para permitir el acceso únicamente al usuario técnico autorizado.
+6. Crear una cuenta técnica exclusiva para la conexión del servidor a Firebase.
+7. Configurar las variables `FIREBASE_SERVER_EMAIL` y `FIREBASE_SERVER_PASSWORD` con las credenciales de esa cuenta.
 
 #### Reglas de seguridad de Firestore
 
-La base de datos utiliza reglas que restringen las operaciones de lectura y escritura al usuario técnico autenticado.
+La base de datos utiliza reglas que restringen las operaciones de lectura y escritura a la cuenta técnica autenticada.
 
 Ejemplo:
 
@@ -163,31 +168,52 @@ service cloud.firestore {
 }
 ```
 
-Se debe reemplazar `UID_DEL_USUARIO_TECNICO` por el UID correspondiente al usuario técnico creado en Firebase Authentication.
+Se debe reemplazar `UID_DEL_USUARIO_TECNICO` por el UID correspondiente a la cuenta técnica creada en Firebase Authentication.
 
-#### Conexión y autenticación
+Estas reglas permiten las operaciones de lectura y escritura únicamente cuando la solicitud está autenticada con el UID autorizado.
 
-La conexión a Firebase se realiza mediante el **Firebase JavaScript SDK con su API modular**, utilizando Firebase Authentication y Firestore Lite.
+## Conexión y autenticación
 
-Firestore Lite permite realizar las operaciones necesarias para la gestión de productos, como consultas, creación, actualización y eliminación de documentos.
+La conexión a Firebase se realiza mediante el Firebase JavaScript SDK con su API modular, utilizando Firebase Authentication y Firestore Lite.
 
-La aplicación utiliza dos mecanismos de autenticación con funciones diferentes:
+La aplicación utiliza dos mecanismos de autenticación con funciones diferentes.
 
-- **Firebase Authentication:** autentica la cuenta técnica que utiliza el servidor para acceder a Firestore.
-- **JWT:** gestiona la autenticación de los usuarios de la API y determina sus permisos según el rol asignado.
+### Firebase Authentication
+
+Autentica la cuenta técnica que utiliza el servidor para acceder a Firestore.
+
+Al iniciar la aplicación, el servidor:
+
+1. Obtiene las credenciales técnicas desde las variables de entorno.
+2. Verifica que estén configuradas.
+3. Inicia sesión mediante Firebase Authentication.
+4. Una vez autenticado correctamente, inicia el servidor Express.
+
+Si la autenticación falla, el servidor no comienza a aceptar solicitudes.
+
+### JSON Web Tokens (JWT)
+
+Gestiona la autenticación de los usuarios de la API y determina sus permisos según el rol asignado.
 
 Las credenciales `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `USER_EMAIL` y `USER_PASSWORD` corresponden a los usuarios gestionados por la aplicación para el inicio de sesión mediante JWT. No necesitan ser los mismos usuarios creados en Firebase Authentication.
 
 La cuenta técnica de Firebase utiliza las variables `FIREBASE_SERVER_EMAIL` y `FIREBASE_SERVER_PASSWORD`.
 
-**Importante:** no se utiliza Firebase Admin SDK ni se requiere una clave privada de cuenta de servicio.
+No se utiliza Firebase Admin SDK ni se requiere una clave privada de cuenta de servicio.
 
-Las credenciales y los datos de acceso deben mantenerse protegidos mediante variables de entorno.
+## Iniciar el servidor
 
-### 5. Iniciar el servidor
+Una vez configuradas las variables de entorno, iniciar la aplicación con:
 
 ```bash
-npm run start
+npm start
+```
+
+Si la autenticación con Firebase es correcta, se mostrarán mensajes similares a los siguientes:
+
+```text
+Servidor autenticado correctamente en Firebase.
+Servidor escuchando en el puerto 3000
 ```
 
 Por defecto, la API estará disponible en:
@@ -293,13 +319,26 @@ La API utiliza códigos de estado HTTP para identificar el resultado de las soli
 | 404 | Recurso o ruta no encontrados. |
 | 500 | Error interno del servidor. |
 
+## Pruebas realizadas
+
+Se verificaron las funcionalidades principales de la API mediante Postman:
+
+- Inicio de sesión de un usuario común.
+- Consulta de productos con un usuario autenticado.
+- Rechazo de operaciones de escritura para usuarios sin permisos de administrador (`403 Forbidden`).
+- Inicio de sesión de un administrador.
+- Creación de productos con permisos de administrador.
+- Consulta posterior de los productos creados para comprobar su persistencia en Firestore.
+- Validación de solicitudes de inicio de sesión sin correo electrónico o sin contraseña (`400 Bad Request`).
+
 ## Seguridad
 
 - Las credenciales se administran mediante variables de entorno.
 - Los archivos sensibles están excluidos del control de versiones mediante `.gitignore`.
+- La cuenta técnica de Firebase se autentica antes de iniciar el servidor.
+- Las reglas de Firestore restringen el acceso a la cuenta técnica autorizada.
 - Las rutas protegidas utilizan autenticación JWT.
 - Los permisos se verifican según el rol del usuario.
-- Firestore utiliza reglas de seguridad para restringir el acceso a la cuenta técnica autorizada.
 - Los errores internos no exponen detalles técnicos sensibles en las respuestas de la API.
 - No se utiliza Firebase Admin SDK ni archivos JSON de cuentas de servicio.
 
